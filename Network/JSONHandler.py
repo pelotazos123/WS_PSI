@@ -7,6 +7,7 @@ from Crypto.handlers.OPEHandler import OPEHandler
 from Crypto.helpers.BFVHelper import BFVHelper
 from Crypto.helpers.CryptoImplementation import CryptoImplementation
 from Crypto.helpers.DamgardJurikHandler import DamgardJurikHelper
+from Crypto.protocols.Albatross import Albatross
 from Crypto.helpers.PaillierHandler import PaillierHelper
 from Logs import Logs
 from Logs.Logs import ThreadData
@@ -23,11 +24,15 @@ class JSONHandler:
     def __init__(self, id, my_data, domain, devices, results, new_peer_function):
         self.CSHandlers = {
             CryptoImplementation("Paillier", "Paillier OPE", "Paillier_OPE",
-                                 "Paillier PSI-CA OPE"): PaillierHelper(),
+                                 "Paillier PSI-CA OPE"): PaillierHelper(), # strings to choose protocol to be used
+
             CryptoImplementation("DamgardJurik", "Damgard-Jurik", "DamgardJurik OPE",
                                  "Damgard-Jurik_OPE", "Damgard-Jurik OPE", "DamgardJurik PSI-CA OPE",
                                  "Damgard-Jurik PSI-CA OPE"): DamgardJurikHelper(),
-            CryptoImplementation("BFV", "BFV_OPE", "BFV OPE"): BFVHelper()
+
+            CryptoImplementation("BFV", "BFV_OPE", "BFV OPE"): BFVHelper(),
+
+            CryptoImplementation("Albatross"): Albatross() 
         }
         self.OPEHandler = OPEHandler(id, my_data, domain, devices, results)
         self.CAOPEHandler = CAOPEHandler(id, my_data, domain, devices, results)

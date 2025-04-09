@@ -1,4 +1,4 @@
-pyzmq~=25.1.2
+pyzmq~=26.2.1
 flask~=3.0.2
 phe~=1.5.0
 psutil~=5.9.8

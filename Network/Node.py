@@ -205,6 +205,9 @@ class Node:
         elif scheme == "Damgard-Jurik":
             self.executor.submit(1, self.json_handler.genkeys, "Damgard-Jurik", bit_length)
             return "Generating Damgard-Jurik keys... Bit length: " + str(bit_length)
+        elif scheme == "Albatross":
+            self.executor.submit(1, self.json_handler.genkeys, "Albatross", bit_length)
+            return "Generating Albatross keys... Bit length: " + str(bit_length)
         elif scheme == "BFV":
             self.executor.submit(1, self.json_handler.genkeys, "BFV", bit_length)
             return "Generating BFV keys... Bit length is ignored"
