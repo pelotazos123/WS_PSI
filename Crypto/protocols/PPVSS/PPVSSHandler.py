@@ -3,7 +3,7 @@ from time import sleep
 from sympy.polys.domains import ZZ  
 from sympy.polys.galoistools import gf_multi_eval
 from ..Albatross.Proofs.LDEI import LDEI
-from ....Network.ledger import Ledger
+from Network.ledger import Ledger
 
 class PPVSS:
     def __init__(self, ledger: Ledger):

@@ -12,7 +12,7 @@ class Utils:
         limite = 10 ** 8
         
         for _ in range(limite):
-            if (isprime(q) and isprime(p)):
+            if isprime(q) and isprime(p):
                 return q, p
             q += 3 * n
             p += 6 * n

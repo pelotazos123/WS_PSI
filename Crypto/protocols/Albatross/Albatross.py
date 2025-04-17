@@ -5,18 +5,20 @@ import numpy as np
 import requests
 import sys
 
-from Crypto.protocols.utils import Utils
+from ..utils.utils import Utils
 
 
 class ALBATROSS:
-    def __init__(self, network, num_participants): # TODO: Modify class or generator to use the network and number of participants
-        """Initializes ALBATROSS protocol with given network and number of participants."""
-        self.__network = network
-        self.__num_participants = num_participants
-        self.__t = num_participants // 3
+    def __init__(self, h, q, p): 
+        """Initializes ALBATROSS protocol"""
+        self.__num_participants = 2
+        self.__t = self.__num_participants // 3
         self.__successful_commit_ids = set()
         self.__successful_reveal_ids = set()
         self.__successful_recovery_ids = set()
+        self.h = h
+        self.q = q
+        self.p = p
         self.__T = []
 
     def __request_commit(self, node_id):
@@ -151,7 +153,7 @@ class ALBATROSS:
 
     def __process_final_output(self):
         """Processes the final output by reconstructing the secret using Vandermonde matrix and randomness."""
-        w = Utils.rootunity(len(self.__T[0]), self.__network.get_q()) 
+        w = Utils.rootunity(len(self.__T[0]), self.q) 
         t = self.__num_participants // 3
         l = self.__num_participants - 2 * t
         matriz_vander = self.__crear_matriz_vandermonde(w, l, t)
@@ -205,7 +207,7 @@ class ALBATROSS:
 
         for lista in self.__T:
             for i in range(len(lista)):
-                lista[i] = pow(self.__network.h, lista[i], self.__network.p)
+                lista[i] = pow(self.h, lista[i], self.p)
         
         t = self.__num_participants // 3
         l = self.__num_participants - 2 * t
@@ -229,7 +231,7 @@ class ALBATROSS:
 
        
         # Create Vandermonde matrix with w.
-        w = Utils.rootunity(len(self.__T[0]), self.__network.get_q())
+        w = Utils.rootunity(len(self.__T[0]), self.q)
         
         matriz_vander = self.__crear_matriz_vandermonde(w, l, t)
         print("Vandermonde matrix size:", matriz_vander.shape)

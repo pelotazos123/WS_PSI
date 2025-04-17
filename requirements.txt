@@ -1,6 +1,9 @@
 pyzmq~=26.2.1
 flask~=3.0.2
 phe~=1.5.0
+pyfhe~=0.0.1
 psutil~=5.9.8
 firebase_admin~=6.5.0
 damgard-jurik~=0.0.3
+requests==2.32.3
+sympy==1.12.1

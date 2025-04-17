@@ -4,6 +4,7 @@ from Logs import Logs
 from Crypto.handlers.IntersectionHandler import IntersectionHandler
 from Network.collections.DbConstants import VERSION
 from Logs.log_activity import log_activity
+from Crypto.protocols.Albatross.Albatross import ALBATROSS
 
 
 class DomainPSIHandler(IntersectionHandler):

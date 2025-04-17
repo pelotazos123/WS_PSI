@@ -1,5 +1,6 @@
 import json
 import time
+import requests
 
 from Crypto.handlers.CAOPEHandler import CAOPEHandler
 from Crypto.handlers.DomainPSIHandler import DomainPSIHandler
@@ -30,9 +31,7 @@ class JSONHandler:
                                  "Damgard-Jurik_OPE", "Damgard-Jurik OPE", "DamgardJurik PSI-CA OPE",
                                  "Damgard-Jurik PSI-CA OPE"): DamgardJurikHelper(),
 
-            CryptoImplementation("BFV", "BFV_OPE", "BFV OPE"): BFVHelper(),
-
-            CryptoImplementation("Albatross"): Albatross() 
+            CryptoImplementation("BFV", "BFV_OPE", "BFV OPE"): BFVHelper()
         }
         self.OPEHandler = OPEHandler(id, my_data, domain, devices, results)
         self.CAOPEHandler = CAOPEHandler(id, my_data, domain, devices, results)
@@ -64,6 +63,20 @@ class JSONHandler:
         Logs.log_activity(thread_data, "GENKEYS_" + cs + "-" + str(bit_length), end_time - start_time, VERSION, self.id)
 
     def start_intersection(self, device, scheme, type, rounds) -> str:
+        try:
+            r = requests.get("http://localhost:8080/api/albatross")
+
+            if r.status_code == 200:
+                data = r.json()
+                shared_randomness = data['final_randomness']
+                print("Aleatoriedad compartida obtenida:", shared_randomness)
+            else: 
+                print("Error al obtener la aleatoriedad compartida:", r.status_code)
+        
+        except Exception as e:
+            print("Error en la llamada a ALBATROSS:", e)
+
+
         crypto_impl = CryptoImplementation.from_string(scheme)
         if crypto_impl in self.CSHandlers:
             cs = self.CSHandlers[crypto_impl]

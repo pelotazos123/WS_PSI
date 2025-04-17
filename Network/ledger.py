@@ -1,5 +1,5 @@
-from ..Crypto.protocols.Albatross.Proofs.LDEI import LDEI
-from ..Crypto.protocols.Albatross.Proofs.DLEQ import DLEQ
+from Crypto.protocols.Albatross.Proofs.LDEI import LDEI
+from Crypto.protocols.Albatross.Proofs.DLEQ import DLEQ
 
 class Ledger:
     def __init__(self, n, q, p, h, pk=None):
@@ -18,7 +18,7 @@ class Ledger:
         self.encrypted_fragments = []  
         self.revealed_fragments = [0] * n  
         self.ld = None  
-        self.dl: list[DLEQ] = [0] * (self.n) 
+        self.dl: list[DLEQ] = [0] * self.n
 
 
     def new_ld(self):

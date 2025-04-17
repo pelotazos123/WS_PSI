@@ -10,6 +10,8 @@ from Network.collections import networking
 from Network.collections.DbConstants import DEFL_PORT, print_banner
 from Network.collections.networking import is_valid_ipv4, is_valid_ipv6
 from Crypto.helpers.CryptoImplementation import CryptoImplementation
+from Crypto.protocols.utils.utils import Utils
+from Network.collections.DbConstants import DEFL_RNDMSIZE
 
 
 def node_wrapper(func):
@@ -26,10 +28,25 @@ def node_wrapper(func):
 def create_app(test_config=None):
     print("The service is starting...")
 
+    node_count = 0
+
     def create_node(port=DEFL_PORT):
+        nonlocal node_count
         local_ip = networking.get_local_ip()
 
-        node = Node(local_ip, port)
+        k = 128 # Umbral
+
+        q, p = Utils.findprime(k, DEFL_RNDMSIZE) # orden del subgrupo y modulo de operacion
+
+        gen = Utils.generator(q) 
+        h = pow(gen, 2, p) # generador del grupo
+
+        n = 2 # Num nodes
+
+        node = Node(node_count, local_ip, port, n, q, p, h)
+
+        node_count += 1
+
         node.start()
         Logs.setup_logs(node.id, len(node.myData), node.domain)
 
@@ -131,7 +148,7 @@ def create_app(test_config=None):
     @app.route('/api/id', methods=['GET'])
     @node_wrapper
     def api_id(node):
-        return jsonify({'id': node.id})
+        return jsonify({'id': node.node_ip})
 
     @app.route('/api/results', methods=['GET'])
     @node_wrapper
@@ -199,6 +216,149 @@ def create_app(test_config=None):
     @node_wrapper
     def api_check_tasks(node):
         return jsonify({'status': node.check_tasks()})
+
+    # ALBATROSS SECTION
+
+    @app.route('/api/albatross', methods=['GET'])
+    @node_wrapper
+    def api_albatross(node):
+        #Inicia secuencia de Albatross en nodo actual
+        commit_duration = node.albatross.execute_commit_phase()
+        reveal_duration = node.albatross.execute_reveal_phase()
+        output_duration = node.albatross.handle_output_phase()
+        
+        #Se recupera el resultado final || Temporal lectura de ficheros
+        with open('aleatoriedad_final.txt', 'r') as f:
+            final_randomness = f.read()
+
+        return jsonify({
+            'status': 'Albatross executed successfully',
+            'commit_time': commit_duration,
+            'reveal_time': reveal_duration,
+            'output_time': output_duration,
+            'final_randomness': final_randomness
+        })
+
+    @app.route('/api/node/<int:node_id>/commit', methods=['GET'])
+    @node_wrapper
+    def api_node_commit(node, node_id):
+        # Se asume que se verifica que node_id corresponda al nodo actual
+        # o se consulta desde una lista interna de nodos, según la arquitectura.
+        try:
+            result = node.commit()  # Método commit() del nodo
+            return jsonify({'status': result})
+        except Exception as e:
+            return jsonify({'status': str(e)}), 500
+
+    @app.route('/api/node/<int:node_id>/reveal', methods=['GET'])
+    @node_wrapper
+    def api_node_reveal(node, node_id):
+        try:
+            result = node.reveal()  # Método reveal() del nodo
+            return jsonify({'status': result})
+        except Exception as e:
+            return jsonify({'status': str(e)}), 500
+
+    @app.route('/api/node/<int:node_id>/output', methods=['GET'])
+    @node_wrapper
+    def api_node_output(node, node_id):
+        try:
+            result = node.output()  # Método output() del nodo
+            if result is False:
+                return jsonify({'status': 'failure', 'node': node_id}), 500
+            else:
+                return jsonify({'result': result}), 200
+        except Exception as e:
+            return jsonify({'status': str(e)}), 500
+
+    @app.route('/api/node/<int:node_id>/recovery', methods=['GET'])
+    @node_wrapper
+    def api_node_recovery(node, node_id):
+        try:
+            failed_nodes = request.args.get('failed_nodes', '').split(',')
+            failed_nodes = [int(x) for x in failed_nodes if x]
+            result = node.recovery(failed_nodes)  # Método recovery() del nodo
+            if result is False:
+                return jsonify({'status': 'failure', 'node': node_id}), 500
+            else:
+                return jsonify({'result': result}), 200
+        except Exception as e:
+            return jsonify({'status': str(e)}), 500
+
+    @app.route('/api/node/<int:node_id>/reconstruction/<int:reco_id>', methods=['GET'])
+    @node_wrapper
+    def api_node_reconstruction(node, node_id, reco_id):
+        try:
+            reco_parties = request.args.get('reco_parties', '').split(',')
+            reco_parties = [int(x) for x in reco_parties if x]
+            result = node.reconstruction(node_id, reco_parties)  # Método reconstruction() del nodo
+            if result is False:
+                return jsonify({'status': 'failure', 'node': node_id}), 500
+            else:
+                return jsonify({'result': result}), 200
+        except Exception as e:
+            return jsonify({'status': str(e)}), 500
+
+    @app.route('/api/node/<int:node_id>/decrypt_fragment', methods=['GET'])
+    @node_wrapper
+    def api_node_decrypt_fragment(node, node_id):
+        try:
+            i = request.args.get('i')
+            if i is None:
+                return jsonify({"status": "error", "message": "Parameter 'i' is required"}), 400
+            i = int(i)
+            node.decrypt_fragment(i)  # Método decrypt_fragment() del nodo
+            return jsonify({"status": "success", "message": f"Fragment {i} decrypted and uploaded to ledger."})
+        except Exception as e:
+            return jsonify({"status": "error", "message": str(e)}), 500
+
+    @app.route('/api/node/<int:node_id>/verify_lde/<int:ledger_id>', methods=['GET'])
+    @node_wrapper
+    def api_node_verify_lde(node, node_id, ledger_id):
+        try:
+            if node.verifie_LDEI(ledger_id):
+                return jsonify({"status": "success", "message": "LDEI verified successfully"}), 200
+            else:
+                return jsonify({"status": "error", "message": "Incorrect LDEI"}), 400
+        except Exception as e:
+            return jsonify({"status": "error", "message": str(e)}), 500
+
+    @app.route('/api/node/<int:node_id>/verify_polynomial/<int:poly_id>', methods=['GET'])
+    @node_wrapper
+    def api_node_verify_polynomial(node, node_id, poly_id):
+        try:
+            if node.verify_polynomial(poly_id):
+                return jsonify({"status": "success", "message": "Polynomial verified successfully"}), 200
+            else:
+                return jsonify({"status": "error", "message": "Incorrect Polynomial"}), 400
+        except Exception as e:
+            return jsonify({"status": "error", "message": str(e)}), 500
+
+    @app.route('/api/node/<int:node_id>/verify_dleq/<int:ledger_id>', methods=['GET'])
+    @node_wrapper
+    def api_node_verify_dleq(node, node_id, ledger_id):
+        try:
+            failed_nodes = request.args.get('failed_nodes', '').split(',')
+            failed_nodes = [int(x) for x in failed_nodes if x]
+            if node.verifie_DELQ(ledger_id, failed_nodes):
+                return jsonify({"status": "success", "message": "DLEQ verified successfully"}), 200
+            else:
+                return jsonify({"status": "error", "message": "Incorrect DLEQ"}), 400
+        except Exception as e:
+            return jsonify({"status": "error", "message": str(e)}), 500
+
+    @app.route('/api/sync_nodes', methods=['GET'])
+    def api_sync_nodes():
+        try:
+            # Se llama al método de sincronización de la red
+            from Network.collections.networking import networking
+            networking.sync_nodes()  # o el método correspondiente en tu implementación
+            return jsonify({"status": "success", "message": "Synchronization completed"}), 200
+        except Exception as e:
+            return jsonify({"status": "error", "message": str(e)}), 500
+
+    return app
+
 
     # noinspection PyMethodMayBeStatic
     # To be able to use appropriate API methods, GET for status and POST for connect/disconnect
