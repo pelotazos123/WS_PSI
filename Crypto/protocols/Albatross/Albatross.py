@@ -5,6 +5,7 @@ import numpy as np
 import requests
 import sys
 
+from Network.collections.DbConstants import DEFL_PORT
 from ..utils.utils import Utils
 
 
@@ -24,7 +25,7 @@ class ALBATROSS:
     def __request_commit(self, node_id):
         """Sends a commit request to the node and adds the node to successful commits if successful."""
         try:
-            response = requests.get(f"http://localhost:5000/node/{node_id}/commit")
+            response = requests.get(f"http://127.0.0.1:{DEFL_PORT}/api/node/commit")
             if (response.status_code == 200) and (len(self.__successful_commit_ids) < (self.__num_participants - self.__t)):
                 self.__successful_commit_ids.add(node_id)
                 print(f"Commit successful on node {node_id}: {response.text}")
@@ -36,7 +37,7 @@ class ALBATROSS:
     def __request_reveal(self, node_id):
         """Sends a reveal request to the node and adds the node to successful reveals if successful."""
         try:
-            response = requests.get(f"http://localhost:5000/node/{node_id}/reveal")
+            response = requests.get(f"http://localhost:{DEFL_PORT}/api/node/reveal")
             if response.status_code == 200:
                 self.__successful_reveal_ids.add(node_id)
                 print(f"Reveal successful on node {node_id}: {response}")
@@ -48,7 +49,7 @@ class ALBATROSS:
     def __request_output(self, node_id):
         """Sends a request to extract randomness from the node and appends the result."""
         try:
-            response = requests.get(f"http://localhost:5000/node/{node_id}/output")
+            response = requests.get(f"http://localhost:{DEFL_PORT}/api/node/output")
             if response.status_code == 200:
                 json_response = response.json()
                 decoded_response = json_response.get('result', [])
@@ -65,7 +66,7 @@ class ALBATROSS:
         """Sends a recovery request to the node in case some nodes failed."""
         try:
             failed_nodes_str = ','.join(map(str, failed_nodes))
-            response = requests.get(f"http://localhost:5000/node/{node_id}/recovery?failed_nodes={failed_nodes_str}")
+            response = requests.get(f"http://localhost:{DEFL_PORT}/api/node/recovery?failed_nodes={failed_nodes_str}")
             if response.status_code == 200:
                 self.__successful_recovery_ids.add(node_id)
                 print(f"Recovery successful on node {node_id}")
@@ -78,7 +79,7 @@ class ALBATROSS:
         """Sends a reconstruction request to the node with the given reconstruction parties."""
         try:
             reco_part = ','.join(map(str, reco_parties))
-            response = requests.get(f"http://localhost:5000/node/{reco_id}/reconstruction/{node_id}?reco_parties={reco_part}")
+            response = requests.get(f"http://localhost:{DEFL_PORT}/api/node/{reco_id}/reconstruction/?reco_parties={reco_part}")
             if response.status_code == 200:
                 
                 json_response = response.json()
@@ -94,9 +95,6 @@ class ALBATROSS:
                 print(f"Reconstruction failed for node {node_id}: {response.status_code}")
         except requests.exceptions.RequestException as e:
             print(f"Error during reconstruction request on node {node_id}: {e}")
-
-
-
 
     def execute_commit_phase(self):
         """Executes the commit phase by sending commit requests to all participants."""
@@ -131,9 +129,9 @@ class ALBATROSS:
         start_time = time.time()
         if len(self.__successful_reveal_ids) == (self.__num_participants - self.__t):
             print("All reveals were successful.")
-            self.__process_output()
+            aleatoriedad = self.__process_output()
             end_time = time.time()
-            return end_time - start_time
+            return (end_time - start_time), aleatoriedad
         else:
             print("Some reveals failed. Proceeding with alternative action.")
             self.__execute_recovery_phase()
@@ -149,7 +147,7 @@ class ALBATROSS:
             thread.start()
         for thread in threads:
             thread.join()
-        self.__process_final_output()
+        return self.__process_final_output()
 
     def __process_final_output(self):
         """Processes the final output by reconstructing the secret using Vandermonde matrix and randomness."""
@@ -170,7 +168,7 @@ class ALBATROSS:
         print("Secret reconstruction completed.")
         with open('aleatoriedad_final.txt', 'w') as archivo:
             archivo.write(str(aleatoriedad_final))  
-        return
+        return str(aleatoriedad_final)
 
     def __execute_recovery_phase(self):
         """Executes the recovery phase to recover failed nodes."""

@@ -29,6 +29,7 @@ def create_app(test_config=None):
     print("The service is starting...")
 
     node_count = 0
+    nodes: list[Node] = []
 
     def create_node(port=DEFL_PORT):
         nonlocal node_count
@@ -44,14 +45,21 @@ def create_app(test_config=None):
         n = 2 # Num nodes
 
         node = Node(node_count, local_ip, port, n, q, p, h)
+        nodes.append(node)
 
         node_count += 1
 
         node.start()
-        Logs.setup_logs(node.id, len(node.myData), node.domain)
+        Logs.setup_logs(node.node_ip, len(node.myData), node.domain)
 
     create_node()
     print_banner()
+
+    def sync_nodes(iterations=50):
+        """Performs multiple rounds of synchronization to propagate public keys."""
+        for _ in range(iterations):
+            for node in nodes:
+                node.gossip_sync()
 
     # create and configure the app
     app = Flask(__name__, instance_relative_config=True)
@@ -225,23 +233,19 @@ def create_app(test_config=None):
         #Inicia secuencia de Albatross en nodo actual
         commit_duration = node.albatross.execute_commit_phase()
         reveal_duration = node.albatross.execute_reveal_phase()
-        output_duration = node.albatross.handle_output_phase()
-        
-        #Se recupera el resultado final || Temporal lectura de ficheros
-        with open('aleatoriedad_final.txt', 'r') as f:
-            final_randomness = f.read()
+        output_duration, aleatoriedad_final = node.albatross.handle_output_phase()
 
         return jsonify({
             'status': 'Albatross executed successfully',
             'commit_time': commit_duration,
             'reveal_time': reveal_duration,
             'output_time': output_duration,
-            'final_randomness': final_randomness
+            'final_randomness': aleatoriedad_final
         })
 
-    @app.route('/api/node/<int:node_id>/commit', methods=['GET'])
+    @app.route('/api/node/commit', methods=['GET'])
     @node_wrapper
-    def api_node_commit(node, node_id):
+    def api_node_commit(node):
         # Se asume que se verifica que node_id corresponda al nodo actual
         # o se consulta desde una lista interna de nodos, según la arquitectura.
         try:
@@ -250,71 +254,71 @@ def create_app(test_config=None):
         except Exception as e:
             return jsonify({'status': str(e)}), 500
 
-    @app.route('/api/node/<int:node_id>/reveal', methods=['GET'])
+    @app.route('/api/node/reveal', methods=['GET'])
     @node_wrapper
-    def api_node_reveal(node, node_id):
+    def api_node_reveal(node):
         try:
             result = node.reveal()  # Método reveal() del nodo
             return jsonify({'status': result})
         except Exception as e:
             return jsonify({'status': str(e)}), 500
 
-    @app.route('/api/node/<int:node_id>/output', methods=['GET'])
+    @app.route('/api/node/output', methods=['GET'])
     @node_wrapper
-    def api_node_output(node, node_id):
+    def api_node_output(node):
         try:
             result = node.output()  # Método output() del nodo
             if result is False:
-                return jsonify({'status': 'failure', 'node': node_id}), 500
+                return jsonify({'status': 'failure', 'node': node.id}), 500
             else:
                 return jsonify({'result': result}), 200
         except Exception as e:
             return jsonify({'status': str(e)}), 500
 
-    @app.route('/api/node/<int:node_id>/recovery', methods=['GET'])
+    @app.route('/api/node/recovery', methods=['GET'])
     @node_wrapper
-    def api_node_recovery(node, node_id):
+    def api_node_recovery(node):
         try:
             failed_nodes = request.args.get('failed_nodes', '').split(',')
             failed_nodes = [int(x) for x in failed_nodes if x]
             result = node.recovery(failed_nodes)  # Método recovery() del nodo
             if result is False:
-                return jsonify({'status': 'failure', 'node': node_id}), 500
+                return jsonify({'status': 'failure', 'node': node.id}), 500
             else:
                 return jsonify({'result': result}), 200
         except Exception as e:
             return jsonify({'status': str(e)}), 500
 
-    @app.route('/api/node/<int:node_id>/reconstruction/<int:reco_id>', methods=['GET'])
+    @app.route('/api/node/reconstruction/<int:reco_id>', methods=['GET'])
     @node_wrapper
-    def api_node_reconstruction(node, node_id, reco_id):
+    def api_node_reconstruction(node, reco_id):
         try:
             reco_parties = request.args.get('reco_parties', '').split(',')
             reco_parties = [int(x) for x in reco_parties if x]
-            result = node.reconstruction(node_id, reco_parties)  # Método reconstruction() del nodo
+            result = node.reconstruction(node.id, reco_parties)  # Método reconstruction() del nodo
             if result is False:
-                return jsonify({'status': 'failure', 'node': node_id}), 500
+                return jsonify({'status': 'failure', 'node': node.id}), 500
             else:
                 return jsonify({'result': result}), 200
         except Exception as e:
             return jsonify({'status': str(e)}), 500
 
-    @app.route('/api/node/<int:node_id>/decrypt_fragment', methods=['GET'])
+    @app.route('/api/node/decrypt_fragment', methods=['GET'])
     @node_wrapper
-    def api_node_decrypt_fragment(node, node_id):
+    def api_node_decrypt_fragment(node):
         try:
             i = request.args.get('i')
             if i is None:
                 return jsonify({"status": "error", "message": "Parameter 'i' is required"}), 400
             i = int(i)
-            node.decrypt_fragment(i)  # Método decrypt_fragment() del nodo
+            node.__decrypt_fragment(i)  # Método decrypt_fragment() del nodo
             return jsonify({"status": "success", "message": f"Fragment {i} decrypted and uploaded to ledger."})
         except Exception as e:
             return jsonify({"status": "error", "message": str(e)}), 500
 
-    @app.route('/api/node/<int:node_id>/verify_lde/<int:ledger_id>', methods=['GET'])
+    @app.route('/api/node/verify_lde/<int:ledger_id>', methods=['GET'])
     @node_wrapper
-    def api_node_verify_lde(node, node_id, ledger_id):
+    def api_node_verify_lde(node, ledger_id):
         try:
             if node.verifie_LDEI(ledger_id):
                 return jsonify({"status": "success", "message": "LDEI verified successfully"}), 200
@@ -323,9 +327,9 @@ def create_app(test_config=None):
         except Exception as e:
             return jsonify({"status": "error", "message": str(e)}), 500
 
-    @app.route('/api/node/<int:node_id>/verify_polynomial/<int:poly_id>', methods=['GET'])
+    @app.route('/api/node/verify_polynomial/<int:poly_id>', methods=['GET'])
     @node_wrapper
-    def api_node_verify_polynomial(node, node_id, poly_id):
+    def api_node_verify_polynomial(node, poly_id):
         try:
             if node.verify_polynomial(poly_id):
                 return jsonify({"status": "success", "message": "Polynomial verified successfully"}), 200
@@ -334,9 +338,9 @@ def create_app(test_config=None):
         except Exception as e:
             return jsonify({"status": "error", "message": str(e)}), 500
 
-    @app.route('/api/node/<int:node_id>/verify_dleq/<int:ledger_id>', methods=['GET'])
+    @app.route('/api/node/verify_dleq/<int:ledger_id>', methods=['GET'])
     @node_wrapper
-    def api_node_verify_dleq(node, node_id, ledger_id):
+    def api_node_verify_dleq(node, ledger_id):
         try:
             failed_nodes = request.args.get('failed_nodes', '').split(',')
             failed_nodes = [int(x) for x in failed_nodes if x]
@@ -351,14 +355,11 @@ def create_app(test_config=None):
     def api_sync_nodes():
         try:
             # Se llama al método de sincronización de la red
-            from Network.collections.networking import networking
-            networking.sync_nodes()  # o el método correspondiente en tu implementación
+
+            sync_nodes()  # o el método correspondiente en tu implementación
             return jsonify({"status": "success", "message": "Synchronization completed"}), 200
         except Exception as e:
             return jsonify({"status": "error", "message": str(e)}), 500
-
-    return app
-
 
     # noinspection PyMethodMayBeStatic
     # To be able to use appropriate API methods, GET for status and POST for connect/disconnect

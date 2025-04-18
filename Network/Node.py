@@ -12,7 +12,7 @@ from Crypto.protocols.Albatross.Proofs.DLEQ import DLEQ
 from Crypto.protocols.PPVSS.PPVSSHandler import PPVSS
 from Network.JSONHandler import JSONHandler
 from Network.PriorityExecutor import PriorityExecutor
-from Network.collections.DbConstants import DEFL_DOMAIN, DEFL_SET_SIZE
+from Network.collections.DbConstants import DEFL_DOMAIN, DEFL_SET_SIZE, DEFL_PORT
 from Network.ledger import Ledger
 
 
@@ -57,6 +57,7 @@ class Node:
             self.p = p  # Módulo de operación
             self.P = []
             self.S = []
+            self.neighbors: list[Node] = []
             self.dec_frag = []
             self.executor = PriorityExecutor(max_workers=10)
             # Manejador de esquemas criptográficos
@@ -308,7 +309,7 @@ class Node:
         for node_id in range(ledger.n):
             if node_id != self.id:
                 try:
-                    response = requests.get(f"http://localhost:5000/node/{node_id}/verify_lde/{self.id}")
+                    response = requests.get(f"http://localhost:{DEFL_PORT}/node/verify_lde/{self.id}")
                     if not (response.status_code == 200):
                         print(
                             f"The LDEI verification {self.id} in node {node_id} was incorrect: {response.status_code}")
@@ -329,10 +330,10 @@ class Node:
         for node_id in range(ledger.n):
             if node_id != self.id:
                 try:
-                    response = requests.get(f"http://localhost:5000/node/{node_id}/verify_polynomial/{self.id}")
+                    response = requests.get(f"http://localhost:{DEFL_PORT}/node/verify_polynomial/{node_id}")
                     if not (response.status_code == 200):
                         print(
-                            f"The polynomial verification uploaded by node {self.id} was incorrect: {response.status_code}")
+                            f"The polynomial verification uploaded by node {node_id} was incorrect: {response.status_code}")
                         return "verify_polynomial operation failed", 400
                 except requests.exceptions.RequestException as e:
                     print(f"Error in polynomial verification at node {node_id}: {e}")
@@ -352,7 +353,7 @@ class Node:
             try:
                 failed_nodes_str = ','.join(map(str, failed_nodes))
                 response = requests.get(
-                    f"http://localhost:5000/node/{node_id}/verify_dleq/{self.id}?failed_nodes={failed_nodes_str}")
+                    f"http://localhost:{DEFL_PORT}/node/{node_id}/verify_dleq/{self.id}?failed_nodes={failed_nodes_str}")
 
                 if not (response.status_code == 200):
                     print(f"The DLEQ verification {self.id} at node {node_id} was incorrect: {response.status_code}")
@@ -389,6 +390,27 @@ class Node:
                 return False
         return True
 
+    def verifie_LDEI(self, ledger_id):
+        ledger: Ledger = self.ledgers[ledger_id]
+
+        if not ledger.ld.verificar(ledger.q, ledger.p, ledger.pk, ledger.alpha, ledger.t + ledger.l,
+                                   ledger.encrypted_fragments):
+            print("The LDEI proof is not correct...")
+            return False
+        return True
+
+    def verifie_DELQ(self, decrypt_id, failed_nodes):
+        my_ledger: Ledger = self.ledgers[self.id]
+        for node_id in failed_nodes:
+            failed_ledger: Ledger = self.ledgers[node_id]
+
+            g = [my_ledger.pk[decrypt_id], failed_ledger.encrypted_fragments[decrypt_id]]
+            x = [my_ledger.h, failed_ledger.revealed_fragments[decrypt_id]]
+            if not failed_ledger.get_dl()[decrypt_id].verificar(my_ledger.q, my_ledger.p, g, x):
+                print("The DELQ proof is not correct...")
+                return False
+            return True
+
     def __decrypt_fragment(self, failed_nodes):
         my_ledger: Ledger = self.ledgers[self.id]
         invsk = pow(self.sk, -1, my_ledger.q)
@@ -404,8 +426,53 @@ class Node:
 
     def sync_all_nodes(self):
         try:
-            response = requests.get("http://localhost:5000/sync_nodes")
+            response = requests.get(f"http://localhost:{DEFL_PORT}/api/sync_nodes")
             if response.status_code != 200:
                 print(f"Error en la sincronización: {response.status_code} - {response.text}")
         except requests.exceptions.RequestException as e:
             print(f"Error en la solicitud de sincronización: {e}")
+
+    def gossip_sync(self):
+        for neighbor in self.neighbors:
+            self.__sync_all_ledgers_with_neighbor(neighbor)
+
+    def __sync_all_ledgers_with_neighbor(self, neighbor: "Node"):
+        for i in range(len(self.ledgers)):
+            self_ledger = self.ledgers[i]
+            neighbor_ledger = neighbor.ledgers[i]
+
+            if neighbor_ledger is None:
+                continue
+
+            if self_ledger is None:
+                self.ledgers[i] = neighbor_ledger
+            else:
+                self.__sync_single_ledger(self_ledger, neighbor_ledger)
+
+    def __sync_single_ledger(self, ledger: Ledger, neighbor_ledger: Ledger):
+        if ledger.P == [] and neighbor_ledger.P != []:
+            ledger.P = neighbor_ledger.P
+
+        if not ledger.alpha and neighbor_ledger.alpha:
+            ledger.alpha = neighbor_ledger.alpha
+
+        if ledger.r == 0 and neighbor_ledger.r > 0:
+            ledger.r = neighbor_ledger.r
+
+        for i in range(len(ledger.pk)):
+            if ledger.pk[i] == 0 and neighbor_ledger.pk[i] != 0:
+                ledger.pk[i] = neighbor_ledger.pk[i]
+
+        if not ledger.encrypted_fragments and neighbor_ledger.encrypted_fragments:
+            ledger.encrypted_fragments = neighbor_ledger.encrypted_fragments
+
+        for i in range(len(ledger.revealed_fragments)):
+            if ledger.revealed_fragments[i] == 0 and neighbor_ledger.revealed_fragments[i] != 0:
+                ledger.revealed_fragments[i] = neighbor_ledger.revealed_fragments[i]
+
+        if ledger.ld is None and neighbor_ledger.ld is not None:
+            ledger.ld = neighbor_ledger.ld
+
+        for i in range(len(ledger.dl)):
+            if ledger.dl[i] == 0 and neighbor_ledger.dl[i] != 0:
+                ledger.dl[i] = neighbor_ledger.dl[i]

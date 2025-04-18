@@ -11,7 +11,7 @@ class DLEQ:
 
     def probar(self, q: int, p: int, g: int, x: int, alpha: int):
         m = len(g) 
-        if(len(x) != m): 
+        if len(x) != m:
             self.__a = self.__a[:0]
             print("Tamaños de g y x incorrectos.")
 

@@ -13,7 +13,7 @@ from Crypto.helpers.PaillierHandler import PaillierHelper
 from Logs import Logs
 from Logs.Logs import ThreadData
 from Network.PriorityExecutor import PriorityExecutor
-from Network.collections.DbConstants import VERSION, TEST_ROUNDS
+from Network.collections.DbConstants import VERSION, TEST_ROUNDS, DEFL_PORT
 
 
 # Priorities
@@ -64,7 +64,7 @@ class JSONHandler:
 
     def start_intersection(self, device, scheme, type, rounds) -> str:
         try:
-            r = requests.get("http://localhost:8080/api/albatross")
+            r = requests.get(f"http://localhost:{DEFL_PORT}/api/albatross")
 
             if r.status_code == 200:
                 data = r.json()
