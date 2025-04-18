@@ -134,9 +134,9 @@ class ALBATROSS:
             return (end_time - start_time), aleatoriedad
         else:
             print("Some reveals failed. Proceeding with alternative action.")
-            self.__execute_recovery_phase()
+            aleatoriedad_final = self.__execute_recovery_phase()
             end_time = time.time()
-            return end_time - start_time
+            return (end_time - start_time), aleatoriedad_final
 
     def __process_output(self):
         """Processes the output by sending output requests to all successfully revealed nodes."""
@@ -185,7 +185,7 @@ class ALBATROSS:
 
         if len(self.__successful_recovery_ids) >= (self.__num_participants - self.__t):
             print("Proceeding with secret reconstruction.")
-            self.__execute_reconstruction_phase(failed_nodes)
+            return self.__execute_reconstruction_phase(failed_nodes)
         else:
             print("Cannot reconstruct secret, insufficient number of well-intentioned participants.")
             exit(-1)
@@ -250,6 +250,7 @@ class ALBATROSS:
             archivo.write(str(aleatoriedad_final))
 
         print("Secret reconstruction completed.")
+        return str(aleatoriedad_final)
 
     def __crear_matriz_vandermonde(self, omega, l, t):
         """
