@@ -17,6 +17,15 @@
         <p class="details">Puerto: <span id="port"></span></p>
         <p class="details"><span id="pending_node"></span></p>
         <p class="details"><span id="pending_handler"></span></p>
+        <label>
+            Randomness generator
+            <select name="Randomness generator" onchange="update_generator(this.value)">
+                <option value="albatross" selected>ALBATROSS</option>
+                <option value="spurt">SPURT</option>
+                <option value="scrape">SCRAPE</option>
+                <option value="herb">HERB</option>
+            </select>
+        </label>
         <button class="btn waves-effect waves-light" onclick="location.href='/metrics'">Métricas</button>
         <button class="btn waves-effect waves-light" onclick="results()">Datos</button>
         <button class="btn waves-effect waves-light" onclick="my_data()">Mi dataset</button>

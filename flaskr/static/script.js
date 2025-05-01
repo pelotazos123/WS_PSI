@@ -21,6 +21,26 @@ function check_connection() {
     });
 }
 
+function update_generator(newGen) {
+    $.ajax({
+        url: '/api/generator/mode',
+        type: 'PUT',
+        contentType: 'application/json; charset=utf-8\\',
+        data: JSON.stringify({ generator: newGen }),
+        dataType: 'json',
+        success: function (resp) {
+            if (resp.status === 'ok') {
+                M.toast({html: "Randomness generator changed correctly to " + newGen.toUpperCase()});
+            } else {
+                M.toast({html: "Error during randomness generator change"});
+            }
+        },
+        error: function(xhr, status, error) {
+        console.error('Error AJAX:', status, error);
+      }
+    });
+}
+
 let nodeNotConnected = "Node not connected";
 
 function get_id() {

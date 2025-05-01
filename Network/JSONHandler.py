@@ -16,13 +16,40 @@ from Network.PriorityExecutor import PriorityExecutor
 from Network.collections.DbConstants import VERSION, TEST_ROUNDS, DEFL_PORT
 
 
+def random_albatross():
+    try:
+        r = requests.get(f"http://localhost:{DEFL_PORT}/api/albatross")
+
+        if r.status_code == 200:
+            data = r.json()
+            shared_randomness = data['final_randomness']
+            print("Aleatoriedad compartida obtenida:", shared_randomness)
+            return shared_randomness
+        else:
+            print("Error al obtener la aleatoriedad compartida:", r.status_code)
+
+    except Exception as e:
+        print("Error en la llamada a ALBATROSS:", e)
+
+def random_spurt():
+    # TODO
+    return "TODO"
+
+def random_herb():
+    # TODO
+    return "TODO"
+
+def random_scrape():
+    # TODO
+    return "TODO"
+
 # Priorities
 # 0: Intersection first step
 # 1: Intersection second step
 # 2: Intersection final step
 # 1 and 2 will be executed first to stop consuming memory on the queue
 class JSONHandler:
-    def __init__(self, id, my_data, domain, devices, results, new_peer_function):
+    def __init__(self, id, my_data, domain, devices, results, new_peer_function, generator):
         self.CSHandlers = {
             CryptoImplementation("Paillier", "Paillier OPE", "Paillier_OPE",
                                  "Paillier PSI-CA OPE"): PaillierHelper(), # strings to choose protocol to be used
@@ -40,6 +67,7 @@ class JSONHandler:
         self.devices = devices
         self.executor = PriorityExecutor(max_workers=10)
         self.new_peer = new_peer_function
+        self.generator = generator
 
     def test_launcher(self, device):
         cs_handlers = self.CSHandlers.values()
@@ -62,19 +90,20 @@ class JSONHandler:
         print("Key generation - " + cs + " - Time: " + str(end_time - start_time) + "s")
         Logs.log_activity(thread_data, "GENKEYS_" + cs + "-" + str(bit_length), end_time - start_time, VERSION, self.id)
 
-    def start_intersection(self, device, scheme, type, rounds) -> str:
-        try:
-            r = requests.get(f"http://localhost:{DEFL_PORT}/api/albatross")
+    def check_generator(self):
+        if self.generator == 'albatross':
+            return random_albatross()
 
-            if r.status_code == 200:
-                data = r.json()
-                shared_randomness = data['final_randomness']
-                print("Aleatoriedad compartida obtenida:", shared_randomness)
-            else: 
-                print("Error al obtener la aleatoriedad compartida:", r.status_code)
-        
-        except Exception as e:
-            print("Error en la llamada a ALBATROSS:", e)
+    def start_intersection(self, device, scheme, type, rounds) -> str:
+        if self.generator == 'albatross':
+            randomness = random_albatross()
+        elif self.generator == 'spurt':
+            randomness = random_spurt()
+        elif self.generator == 'scrape':
+            randomness = random_scrape()
+        elif self.generator == 'herb':
+            randomness = random_herb()
+            print("random")
 
 
         crypto_impl = CryptoImplementation.from_string(scheme)

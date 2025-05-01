@@ -7,7 +7,7 @@ from flask.views import MethodView
 from Logs import Logs
 from Network.Node import Node
 from Network.collections import networking
-from Network.collections.DbConstants import DEFL_PORT, print_banner
+from Network.collections.DbConstants import DEFL_PORT, print_banner, DEFL_VALID_GENERATORS
 from Network.collections.networking import is_valid_ipv4, is_valid_ipv6
 from Crypto.helpers.CryptoImplementation import CryptoImplementation
 from Crypto.protocols.utils.utils import Utils
@@ -195,7 +195,7 @@ def create_app(test_config=None):
         id = request.args.get('id')
         if id is not None:
             return Logs.get_logs(id)
-        return Logs.get_logs(node.id)
+        return Logs.get_logs(node.node_ip)
 
     @app.route('/api/test', methods=['POST'])
     @node_wrapper
@@ -212,7 +212,7 @@ def create_app(test_config=None):
             return jsonify({'status': 'Invalid parameters'})
         res = node.update_setup(domain, set_size)
         if res == "Setup updated":
-            Logs.setup_logs(node.id, set_size, domain)
+            Logs.setup_logs(node.node.node_ip, set_size, domain)
         return jsonify({'status': res})
 
     @app.route('/api/check_connection', methods=['GET'])
@@ -360,6 +360,27 @@ def create_app(test_config=None):
             return jsonify({"status": "success", "message": "Synchronization completed"}), 200
         except Exception as e:
             return jsonify({"status": "error", "message": str(e)}), 500
+
+    @app.route('/api/generator/mode', methods=['PUT'])
+    @node_wrapper
+    def api_select_randomness_generator(node):
+        data = request.get_json(force=True)
+        new_gen = data.get('generator')
+
+        if node is None:
+            return jsonify({"status": "error", "message": "Node not initialized"}), 400
+
+        if new_gen is None:
+            return jsonify({"status": "error", "message": "New generator not provided"}), 400
+
+        if new_gen not in DEFL_VALID_GENERATORS:
+            return jsonify({"status": "error", "message": "Selected generator is not valid"}), 400
+
+        node.generator = new_gen
+
+        node.json_handler.generator = new_gen
+
+        return jsonify({'status': 'ok', 'generator': node.generator})
 
     # noinspection PyMethodMayBeStatic
     # To be able to use appropriate API methods, GET for status and POST for connect/disconnect

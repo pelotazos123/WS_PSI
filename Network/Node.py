@@ -46,8 +46,9 @@ class Node:
             self.myData = set(random.sample(range(DEFL_DOMAIN), DEFL_SET_SIZE))  # Datos propios
             self.domain = DEFL_DOMAIN  # Dominio de los números aleatorios sobre los que se trabaja
             self.results = {}  # Resultados de las intersecciones
+            self.generator = "albatross"
             self.json_handler = JSONHandler(self.node_ip, self.myData, self.domain, self.devices, self.results,
-                                            self.new_peer)
+                                            self.new_peer, self.generator)
             self.ledgers: list[Ledger] = [None] * n
             self.ledgers[id] = Ledger(n, q, p, h)
             self.sk = random.randint(0, q-1)

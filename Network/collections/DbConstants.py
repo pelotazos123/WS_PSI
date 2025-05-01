@@ -12,6 +12,8 @@ DEFL_KEYSIZE_PAILLIER = 2048
 DEFL_KEYSIZE_DAMGARD = 2048
 DEFL_EXPANSIONFACTOR = 2
 
+DEFL_VALID_GENERATORS = ('albatross', 'spurt', 'herb', 'scrape')
+
 TEST_ROUNDS = 20  # This would be 20 * 6 type of operations, so 120 operations in total
 
 FB_URL = 'https://ws-psi-25-default-rtdb.europe-west1.firebasedatabase.app'
