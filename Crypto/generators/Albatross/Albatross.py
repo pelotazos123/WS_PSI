@@ -10,9 +10,9 @@ from ..utils.utils import Utils
 
 
 class ALBATROSS:
-    def __init__(self, h, q, p): 
+    def __init__(self, h, q, p, n):
         """Initializes ALBATROSS protocol"""
-        self.__num_participants = 2
+        self.__num_participants = n
         self.__t = self.__num_participants // 3
         self.__successful_commit_ids = set()
         self.__successful_reveal_ids = set()

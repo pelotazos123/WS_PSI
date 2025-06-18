@@ -8,7 +8,6 @@ from Crypto.handlers.OPEHandler import OPEHandler
 from Crypto.helpers.BFVHelper import BFVHelper
 from Crypto.helpers.CryptoImplementation import CryptoImplementation
 from Crypto.helpers.DamgardJurikHandler import DamgardJurikHelper
-from Crypto.protocols.Albatross import Albatross
 from Crypto.helpers.PaillierHandler import PaillierHelper
 from Logs import Logs
 from Logs.Logs import ThreadData
@@ -49,7 +48,7 @@ def random_scrape():
 # 2: Intersection final step
 # 1 and 2 will be executed first to stop consuming memory on the queue
 class JSONHandler:
-    def __init__(self, id, my_data, domain, devices, results, new_peer_function, generator):
+    def __init__(self, id, my_data, domain, devices, results, new_peer_function):
         self.CSHandlers = {
             CryptoImplementation("Paillier", "Paillier OPE", "Paillier_OPE",
                                  "Paillier PSI-CA OPE"): PaillierHelper(), # strings to choose protocol to be used
@@ -67,7 +66,7 @@ class JSONHandler:
         self.devices = devices
         self.executor = PriorityExecutor(max_workers=10)
         self.new_peer = new_peer_function
-        self.generator = generator
+        self.generator = "albatross"
 
     def test_launcher(self, device):
         cs_handlers = self.CSHandlers.values()
@@ -91,21 +90,20 @@ class JSONHandler:
         Logs.log_activity(thread_data, "GENKEYS_" + cs + "-" + str(bit_length), end_time - start_time, VERSION, self.id)
 
     def check_generator(self):
-        if self.generator == 'albatross':
-            return random_albatross()
+        match self.generator:
+            case 'albatross':
+                return random_albatross()
+            case 'spurt':
+                return random_spurt()
+            case 'scrape':
+                return random_scrape()
+            case 'herb':
+                print("random")
+                return random_herb()
+            case _:
+                return random_albatross()
 
     def start_intersection(self, device, scheme, type, rounds) -> str:
-        if self.generator == 'albatross':
-            randomness = random_albatross()
-        elif self.generator == 'spurt':
-            randomness = random_spurt()
-        elif self.generator == 'scrape':
-            randomness = random_scrape()
-        elif self.generator == 'herb':
-            randomness = random_herb()
-            print("random")
-
-
         crypto_impl = CryptoImplementation.from_string(scheme)
         if crypto_impl in self.CSHandlers:
             cs = self.CSHandlers[crypto_impl]

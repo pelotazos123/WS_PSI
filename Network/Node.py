@@ -7,9 +7,9 @@ import zmq
 from sympy import ZZ
 from sympy.polys.galoistools import gf_multi_eval
 
-from Crypto.protocols.Albatross.Albatross import ALBATROSS
-from Crypto.protocols.Albatross.Proofs.DLEQ import DLEQ
-from Crypto.protocols.PPVSS.PPVSSHandler import PPVSS
+from Crypto.generators.Albatross.Albatross import ALBATROSS
+from Crypto.generators.Albatross.Proofs.DLEQ import DLEQ
+from Crypto.generators.PPVSS.PPVSSHandler import PPVSS
 from Network.JSONHandler import JSONHandler
 from Network.PriorityExecutor import PriorityExecutor
 from Network.collections.DbConstants import DEFL_DOMAIN, DEFL_SET_SIZE, DEFL_PORT
@@ -46,9 +46,8 @@ class Node:
             self.myData = set(random.sample(range(DEFL_DOMAIN), DEFL_SET_SIZE))  # Datos propios
             self.domain = DEFL_DOMAIN  # Dominio de los números aleatorios sobre los que se trabaja
             self.results = {}  # Resultados de las intersecciones
-            self.generator = "albatross"
             self.json_handler = JSONHandler(self.node_ip, self.myData, self.domain, self.devices, self.results,
-                                            self.new_peer, self.generator)
+                                            self.new_peer)
             self.ledgers: list[Ledger] = [None] * n
             self.ledgers[id] = Ledger(n, q, p, h)
             self.sk = random.randint(0, q-1)
@@ -63,7 +62,7 @@ class Node:
             self.executor = PriorityExecutor(max_workers=10)
             # Manejador de esquemas criptográficos
 
-            self.albatross = ALBATROSS(self.h, self.q, self.p)  # Instancia de Albatross para el manejo de claves
+            self.albatross = ALBATROSS(self.h, self.q, self.p, n)  # Instancia de Albatross para el manejo de claves
         
 
     def start(self):
@@ -477,3 +476,14 @@ class Node:
         for i in range(len(ledger.dl)):
             if ledger.dl[i] == 0 and neighbor_ledger.dl[i] != 0:
                 ledger.dl[i] = neighbor_ledger.dl[i]
+
+    def set_neighbors(self, neighbors):
+        for neighbor in neighbors:
+            if neighbor not in self.neighbors:
+                self.neighbors.append(neighbor)
+
+    def get_id(self):
+        return self.id
+
+    def get_neighbors(self) -> list["Node"]:
+        return self.neighbors

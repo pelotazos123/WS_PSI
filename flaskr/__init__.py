@@ -10,7 +10,7 @@ from Network.collections import networking
 from Network.collections.DbConstants import DEFL_PORT, print_banner, DEFL_VALID_GENERATORS
 from Network.collections.networking import is_valid_ipv4, is_valid_ipv6
 from Crypto.helpers.CryptoImplementation import CryptoImplementation
-from Crypto.protocols.utils.utils import Utils
+from Crypto.generators.utils.utils import Utils
 from Network.collections.DbConstants import DEFL_RNDMSIZE
 
 
@@ -28,7 +28,7 @@ def node_wrapper(func):
 def create_app(test_config=None):
     print("The service is starting...")
 
-    node_count = 0
+    node_count = 3
     nodes: list[Node] = []
 
     def create_node(port=DEFL_PORT):
@@ -42,12 +42,8 @@ def create_app(test_config=None):
         gen = Utils.generator(q) 
         h = pow(gen, 2, p) # generador del grupo
 
-        n = 2 # Num nodes
-
-        node = Node(node_count, local_ip, port, n, q, p, h)
+        node = Node(len(nodes), local_ip, port, len(nodes)+1, q, p, h)
         nodes.append(node)
-
-        node_count += 1
 
         node.start()
         Logs.setup_logs(node.node_ip, len(node.myData), node.domain)

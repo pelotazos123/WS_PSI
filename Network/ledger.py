@@ -1,5 +1,5 @@
-from Crypto.protocols.Albatross.Proofs.LDEI import LDEI
-from Crypto.protocols.Albatross.Proofs.DLEQ import DLEQ
+from Crypto.generators.Albatross.Proofs.LDEI import LDEI
+from Crypto.generators.Albatross.Proofs.DLEQ import DLEQ
 
 class Ledger:
     def __init__(self, n, q, p, h, pk=None):
