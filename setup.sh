@@ -7,10 +7,10 @@ echo "ENV_NAME: $ENV_NAME"
 echo "PYTHON VERSION: $(python3.11 --version)"
 echo "#############################################"
 echo "Creando el entorno virtual... -> $ENV_NAME"
-python3.11 -m venv $ENV_NAME
+python3.11 -m venv WS-PSI-ENV
 
 echo "Activando el entorno virtual..."
-source $ENV_NAME/bin/activate
+source WS-PSI-ENV/bin/activate
 
 echo "Actualizando pip..."
 pip install --no-cache-dir --upgrade pip
