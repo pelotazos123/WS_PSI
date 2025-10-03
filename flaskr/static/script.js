@@ -63,6 +63,7 @@ function loader() {
                             \n</div>');
 }
 
+
 function update_devices() {
     loader();
     $.getJSON('/api/devices', function(data){

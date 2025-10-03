@@ -28,11 +28,7 @@ def node_wrapper(func):
 def create_app(test_config=None):
     print("The service is starting...")
 
-    node_count = 3
-    nodes: list[Node] = []
-
     def create_node(port=DEFL_PORT):
-        nonlocal node_count
         local_ip = networking.get_local_ip()
 
         k = 128 # Umbral
@@ -42,8 +38,9 @@ def create_app(test_config=None):
         gen = Utils.generator(q) 
         h = pow(gen, 2, p) # generador del grupo
 
-        node = Node(len(nodes), local_ip, port, len(nodes)+1, q, p, h)
-        nodes.append(node)
+        node_id = local_ip.split(".")[3]
+
+        node = Node(node_id, local_ip, port, q, p, h)
 
         node.start()
         Logs.setup_logs(node.node_ip, len(node.myData), node.domain)
@@ -54,7 +51,7 @@ def create_app(test_config=None):
     def sync_nodes(iterations=50):
         """Performs multiple rounds of synchronization to propagate public keys."""
         for _ in range(iterations):
-            for node in nodes:
+            for node in node.devices:
                 node.gossip_sync()
 
     # create and configure the app
