@@ -26,7 +26,7 @@ class Node:
             return None
         return Node.__instance
 
-    def __init__(self, id, node_ip, port, n, q, p, h, peers=None):
+    def __init__(self, id, node_ip, port, q, p, h, peers=None):
         """ Virtually private constructor. """
         if peers is None:
             peers = []
@@ -48,8 +48,9 @@ class Node:
             self.results = {}  # Resultados de las intersecciones
             self.json_handler = JSONHandler(self.node_ip, self.myData, self.domain, self.devices, self.results,
                                             self.new_peer)
-            self.ledgers: list[Ledger] = [None] * n
-            self.ledgers[id] = Ledger(n, q, p, h)
+            self.n = len(devices)
+            self.ledgers: list[Ledger] = [None] * self.n
+            self.ledgers[id] = Ledger(self.n, q, p, h)
             self.sk = random.randint(0, q-1)
             self.pk = pow(h, self.sk, p)
             self.h = h  # Generador del grupo
@@ -62,7 +63,7 @@ class Node:
             self.executor = PriorityExecutor(max_workers=10)
             # Manejador de esquemas criptográficos
 
-            self.albatross = ALBATROSS(self.h, self.q, self.p, n)  # Instancia de Albatross para el manejo de claves
+            self.albatross = ALBATROSS(self.h, self.q, self.p, self.n)  # Instancia de Albatross para el manejo de claves
         
 
     def start(self):
