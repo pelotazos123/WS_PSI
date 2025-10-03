@@ -13,6 +13,7 @@ from Logs import Logs
 from Logs.Logs import ThreadData
 from Network.PriorityExecutor import PriorityExecutor
 from Network.collections.DbConstants import VERSION, TEST_ROUNDS, DEFL_PORT
+from Crypto.handlers.LinearRegressionHandler import LinearRegressionHandler
 
 
 def random_albatross():
@@ -66,6 +67,7 @@ class JSONHandler:
         self.devices = devices
         self.executor = PriorityExecutor(max_workers=10)
         self.new_peer = new_peer_function
+        self.linearRegressionHandler = LinearRegressionHandler(id, devices, results)
         self.generator = "albatross"
 
     def test_launcher(self, device):
@@ -122,6 +124,16 @@ class JSONHandler:
                     " - Task started, check logs")
         return "Invalid scheme: " + scheme
 
+    def start_linear_regression(self, device, x, y):
+        local_share = self.linearRegressionHandler.compute_local_sums(x, y)
+        # enviar al otro nodo
+        self.devices[device]["socket"].send_json({
+            "peer": self.id,
+            "step": "LR1",
+            "data": local_share
+        })
+        return "Linear regression shares sent"
+
     def handle_message(self, message):
         try:
             message = json.loads(message)
@@ -130,6 +142,18 @@ class JSONHandler:
                 self.new_peer(message['peer'], time.strftime("%H:%M:%S", time.localtime()))
             if message['step'] == "2":
                 self.handle_intersection_second_step(message)
+            if message.get("step") == "LR1":
+                peer_share = message["data"]
+                if "linear_regression" not in self.results:
+                    self.results["linear_regression"] = []
+                self.results["linear_regression"].append(peer_share)
+
+                # si ya hay suficientes shares, agregamos
+                if len(self.results["linear_regression"]) == len(self.devices):
+                    b0, b1 = self.linearRegressionHandler.aggregate(self.results["linear_regression"])
+                    self.results["final_regression"] = {"beta0": b0, "beta1": b1}
+                    print(">>> Final regression result:", self.results["final_regression"])
+
             elif message['step'] == "F":
                 self.handle_intersection_final_step(message)
         except json.JSONDecodeError:

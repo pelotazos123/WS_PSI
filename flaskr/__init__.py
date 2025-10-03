@@ -144,6 +144,26 @@ def create_app(test_config=None):
             rounds = 1
         return jsonify({'status': node.start_intersection(device, scheme, type, rounds)})
 
+    @app.route('/api/linear_regression', methods=['POST'])
+    @node_wrapper
+    def api_linear_regression(node):
+        data = request.get_json()
+        device = data.get('device')
+        x = data.get('x')
+        y = data.get('y')
+
+        if device is None or x is None or y is None:
+            return jsonify({'status': 'Invalid parameters'}), 400
+
+        return jsonify({'status': node.start_linear_regression(device, x, y)})
+
+    @app.route('/api/linear_regression_result', methods=['GET'])
+    @node_wrapper
+    def api_linear_regression_result(node):
+        if "final_regression" in node.results:
+            return jsonify({'result': node.results["final_regression"]})
+        return jsonify({'status': 'Not enough data yet'}), 202
+
     @app.route('/api/dataset', methods=['GET'])
     @node_wrapper
     def api_dataset(node):

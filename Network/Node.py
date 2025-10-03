@@ -268,6 +268,9 @@ class Node:
             return self.json_handler.start_intersection(device, scheme, type, rounds)
         return "Device not found - Have the peer send an ACK first"
 
+    def start_linear_regression(self, device, x, y):
+        return self.json_handler.start_linear_regression(device, x, y)
+
     def launch_test(self, device) -> str:
         if device in self.devices:
             self.json_handler.test_launcher(device)
