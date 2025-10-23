@@ -39,6 +39,7 @@ def create_app(test_config=None):
         h = pow(gen, 2, p) # generador del grupo
 
         node_id = local_ip.split(".")[3]
+        node_id = int(str(node_id)[0])  # 1
 
         node = Node(node_id, local_ip, port, q, p, h)
 
@@ -141,25 +142,25 @@ def create_app(test_config=None):
             rounds = 1
         return jsonify({'status': node.start_intersection(device, scheme, type, rounds)})
 
-    @app.route('/api/linear_regression', methods=['POST'])
+    @app.route('/api/numeric_kphase', methods=['POST'])
     @node_wrapper
-    def api_linear_regression(node):
-        data = request.get_json()
-        device = data.get('device')
-        x = data.get('x')
-        y = data.get('y')
+    def api_numeric_kphase(node):
+        k = 2
+        print(f"Node {node.node_ip} launching numeric k-phase protocol...")
 
-        if device is None or x is None or y is None:
-            return jsonify({'status': 'Invalid parameters'}), 400
+        for peer in node.devices:
+            message = {
+                "step": "NUMERIC_KPHASE_START",
+                "collector": node.node_ip,
+                "k": k
+            }
+            node.send_message(peer, message)
 
-        return jsonify({'status': node.start_linear_regression(device, x, y)})
-
-    @app.route('/api/linear_regression_result', methods=['GET'])
-    @node_wrapper
-    def api_linear_regression_result(node):
-        if "final_regression" in node.results:
-            return jsonify({'result': node.results["final_regression"]})
-        return jsonify({'status': 'Not enough data yet'}), 202
+        return jsonify({
+            "status": "Numeric k-phase protocol started",
+            "collector": node.node_ip,
+            "peers": list(node.devices.keys())
+        })
 
     @app.route('/api/dataset', methods=['GET'])
     @node_wrapper

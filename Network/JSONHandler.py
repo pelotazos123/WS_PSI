@@ -1,4 +1,5 @@
 import json
+import random
 import time
 import requests
 
@@ -13,7 +14,7 @@ from Logs import Logs
 from Logs.Logs import ThreadData
 from Network.PriorityExecutor import PriorityExecutor
 from Network.collections.DbConstants import VERSION, TEST_ROUNDS, DEFL_PORT
-from Crypto.handlers.LinearRegressionHandler import LinearRegressionHandler
+from Crypto.handlers.NumericKPhaseHandler import NumericKPhaseHandler
 
 
 def random_albatross():
@@ -67,7 +68,6 @@ class JSONHandler:
         self.devices = devices
         self.executor = PriorityExecutor(max_workers=10)
         self.new_peer = new_peer_function
-        self.linearRegressionHandler = LinearRegressionHandler(id, devices, results)
         self.generator = "albatross"
 
     def test_launcher(self, device):
@@ -124,38 +124,59 @@ class JSONHandler:
                     " - Task started, check logs")
         return "Invalid scheme: " + scheme
 
-    def start_linear_regression(self, device, x, y):
-        local_share = self.linearRegressionHandler.compute_local_sums(x, y)
-        # enviar al otro nodo
-        self.devices[device]["socket"].send_json({
-            "peer": self.id,
-            "step": "LR1",
-            "data": local_share
-        })
-        return "Linear regression shares sent"
-
     def handle_message(self, message):
         try:
             message = json.loads(message)
             print(f"Node {self.id} (You) received: {message}")
+
+
+            print("NUMERIC_KPHASE_START"==message['step'])
+            print(message['k'])
+            print(message['step'])
+
             if message['peer'] not in self.devices:
+                print("peer")
                 self.new_peer(message['peer'], time.strftime("%H:%M:%S", time.localtime()))
             if message['step'] == "2":
+                print("s2")
                 self.handle_intersection_second_step(message)
-            if message.get("step") == "LR1":
-                peer_share = message["data"]
-                if "linear_regression" not in self.results:
-                    self.results["linear_regression"] = []
-                self.results["linear_regression"].append(peer_share)
+                
+            print("s3")
+            ##################################################################################    
 
-                # si ya hay suficientes shares, agregamos
-                if len(self.results["linear_regression"]) == len(self.devices):
-                    b0, b1 = self.linearRegressionHandler.aggregate(self.results["linear_regression"])
-                    self.results["final_regression"] = {"beta0": b0, "beta1": b1}
-                    print(">>> Final regression result:", self.results["final_regression"])
+            if message['step'] == "NUMERIC_KPHASE_START":
+                print("1")
+                value = random.uniform(0, 50)  
+                print("2")
+                shares = self.numericKPhaseHandler.local_compute(value)
+                print("3")
+                print(f"Local shares computed: {shares}")
+                response = {
+                    "step": "NUMERIC_KPHASE_RESULT",
+                    "peer": self.id,
+                    "data": shares
+                }
+                collector = message["collector"]
+                self.devices[collector]["socket"].send_json(response)
+            
+            if message['step'] == "NUMERIC_KPHASE_RESULT":
+                peer_data = message["data"]
+                if "numeric_kphase_results" not in self.results:
+                    self.results["numeric_kphase_results"] = []
+                self.results["numeric_kphase_results"].extend(peer_data)
+
+                if len(self.results["numeric_kphase_results"]) >= len(self.devices):
+                    final = self.numericKPhaseHandler.aggregate_results(
+                        self.results["numeric_kphase_results"]
+                    )
+                    self.results["final_numeric_kphase"] = final
+                    print(f"Final regression result: {final}")
+
 
             elif message['step'] == "F":
                 self.handle_intersection_final_step(message)
+
+            print("4")
         except json.JSONDecodeError:
             print("Received message is not a valid JSON.")
 

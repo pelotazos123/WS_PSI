@@ -136,6 +136,19 @@ function disconnect() {
     });
 }
 
+function NumericKPhase() {
+
+    $.post('/api/numeric_kphase', function(data){
+    })
+    .done(function(data) {
+        const message = data.status;
+        M.toast({html: message});
+    })
+    .fail(function() {
+        M.toast({html: "Error returned, likely the node threw an exception. Check the logs for more information."});
+    });
+}
+
 function FindIntersection(device, scheme, type, rounds) {
     const data = {
         "device": device,

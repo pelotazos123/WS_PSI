@@ -48,9 +48,9 @@ class Node:
             self.results = {}  # Resultados de las intersecciones
             self.json_handler = JSONHandler(self.node_ip, self.myData, self.domain, self.devices, self.results,
                                             self.new_peer)
-            self.n = len(devices)
+            self.n = len(self.devices)
             self.ledgers: list[Ledger] = [None] * self.n
-            self.ledgers[id] = Ledger(self.n, q, p, h)
+            #self.ledgers[id] = Ledger(self.n, q, p, h)
             self.sk = random.randint(0, q-1)
             self.pk = pow(h, self.sk, p)
             self.h = h  # Generador del grupo
@@ -231,7 +231,7 @@ class Node:
         elif scheme == "BFV":
             self.executor.submit(1, self.json_handler.genkeys, "BFV", bit_length)
             return "Generating BFV keys... Bit length is ignored"
-        return "Invalid scheme"
+        return "Invalid scheme X"
 
     def new_peer(self, peer, last_seen):
         if peer in self.devices:
@@ -240,6 +240,7 @@ class Node:
         dealer_socket.set_hwm(2000)
         dealer_socket.connect(f"tcp://{peer}:{self.port}")
         self.devices[peer] = {"socket": dealer_socket, "last_seen": last_seen}
+        self.n = len(self.devices)
         print(f"Added {peer} to my network")
         return f"Added {peer} to the network"
 
@@ -269,14 +270,14 @@ class Node:
             return self.json_handler.start_intersection(device, scheme, type, rounds)
         return "Device not found - Have the peer send an ACK first"
 
-    def start_linear_regression(self, device, x, y):
-        return self.json_handler.start_linear_regression(device, x, y)
-
     def launch_test(self, device) -> str:
         if device in self.devices:
             self.json_handler.test_launcher(device)
             return "Launching a massive test with " + device + " - Check logs"
         return "Device not found"
+
+    def get_devices(self):
+        return list(self.devices)
 
     def update_setup(self, domain, set_size) -> str:
         if not domain.isdigit() or not set_size.isdigit() or int(domain) < int(set_size):

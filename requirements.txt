@@ -9,3 +9,4 @@ damgard-jurik~=0.0.3
 requests==2.32.3
 sympy==1.12.1
 numpy==2.3.3
+scikit-learn==1.7.2
